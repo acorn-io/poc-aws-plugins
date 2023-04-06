@@ -54,11 +54,11 @@ func NewRDSStack(scope constructs.Construct, id string, props *awscdk.StackProps
 	creds := awsrds.Credentials_FromGeneratedSecret(jsii.String("clusteradmin"), &awsrds.CredentialsBaseOptions{})
 
 	cluster := awsrds.NewServerlessCluster(stack, getItemName(id), &awsrds.ServerlessClusterProps{
-		Engine: awsrds.DatabaseClusterEngine_AURORA_MYSQL(),
-
-		CopyTagsToSnapshot: jsii.Bool(true),
-		Credentials:        creds,
-		Vpc:                vpc,
+		Engine:              awsrds.DatabaseClusterEngine_AURORA_MYSQL(),
+		DefaultDatabaseName: jsii.String("instance"),
+		CopyTagsToSnapshot:  jsii.Bool(true),
+		Credentials:         creds,
+		Vpc:                 vpc,
 		Scaling: &awsrds.ServerlessScalingOptions{
 			AutoPause: awscdk.Duration_Minutes(jsii.Number(10)),
 		},
