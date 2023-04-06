@@ -1,4 +1,4 @@
-args: dbName: "billDbTesting"
+args: dbName: "AcornRdsPlugin"
 jobs: {
     "context-generator": {
         build: {
