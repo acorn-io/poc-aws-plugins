@@ -1,87 +1,81 @@
 args: dbName: "AcornRdsPlugin"
-jobs: {
-    "context-generator": {
-        build: {
-            context: "./cdk-render"
-            dockerfile: "./cdk-render/Dockerfile"
-        }
-        dirs: {
-            "/acorn/aws": "secret://aws-config"
-        }
-        env: {
-            OUTPUT_FILE: "/run/secrets/output"
-            AWS_CONFIG_PATH: "/acorn/aws"
-        }
-        annotations: {
-            "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCdkGenerateRole"
-        }
-    },
-    "cdk-cfn-render": {
-        build: {
-            context: "./rds-cdk"
-            dockerfile: "./rds-cdk/Dockerfile"
-        }
-        dependsOn: ["context-generator"]
-        files: {
-            "/app/cdk.context.json": "secret://cdk-context-json/content"
-        }
-        env: {
-            CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
-            CDK_DEFAULT_REGION: "secret://aws-config/aws-region"
-        }
-        dirs: {
-            "/acorn/data": "volume://cfn-data"
-        }
-        sidecars: {
-            "cfn-deploy": {
-                build: {
-                    context: "./cfn-apply" 
-                    dockerfile: "./cfn-apply/Dockerfile"
-                }
-                dirs: {
-                    "/acorn/data": "volume://cfn-data"
-                }
-                command: args.dbName
-            }
-        }
-        annotations: {
-            "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnAdmin"
-        }
-    },
-    "render-service": {
-        build: {
-            context: "./render-service"
-            dockerfile: "./render-service/Dockerfile"
-        }
-        dependsOn: ["cdk-cfn-render"]
-        command: [args.dbName]
-        annotations: {
-            "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnCreateRole"
-        }
-    }
+
+services: db: {
+    generated: job: "render-service"
+}
+
+jobs: "context-generator": {
+	build: {
+		context:    "./cdk-render"
+		dockerfile: "./cdk-render/Dockerfile"
+	}
+	dirs: "/acorn/aws": "secret://aws-config"
+	env: {
+		OUTPUT_FILE:     "/run/secrets/output"
+		AWS_CONFIG_PATH: "/acorn/aws"
+	}
+	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCdkGenerateRole"
+}
+
+jobs: "cdk-cfn-render": {
+	sidecars: "cfn-render": {
+		init: true
+		build: {
+			context:    "./rds-cdk"
+			dockerfile: "./rds-cdk/Dockerfile"
+		}
+		dependsOn: ["context-generator"]
+		files: "/app/cdk.context.json": "secret://cdk-context-json/content"
+		env: {
+			CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
+			CDK_DEFAULT_REGION:  "secret://aws-config/aws-region"
+		}
+		dirs: "/acorn/data": "volume://cfn-data"
+	}
+	build: {
+		context:    "./cfn-apply"
+		dockerfile: "./cfn-apply/Dockerfile"
+	}
+	dirs: "/acorn/data": "volume://cfn-data"
+	command: args.dbName
+	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnAdmin"
+}
+
+jobs: "render-service": {
+	build: {
+		context:    "./render-service"
+		dockerfile: "./render-service/Dockerfile"
+	}
+	dependsOn: ["cdk-cfn-render"]
+	command: [args.dbName]
+	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnCreateRole"
 }
 
 volumes: "cfn-data": class: "ephemeral"
 
 secrets: {
-    "aws-config": {
-        type: "opaque"
-        data: {
-            "account-id": "223342718081"
-            "vpc-id": "vpc-0a95e30e5c79ce188"
-            "aws-region": "us-east-1"
-        }
-    }
-    "cdk-context-json": {
-        type: "generated"
-        params: {
-            job: "context-generator"
-        }
-    }
-    "acorn-service": {
+    "admin": {
         type: "generated"
         params: {
             job: "render-service"
+            format: "json"
         }
     }
+	"aws-config": {
+        external: "context://aws"
+		type: "opaque"
+		data: {
+			"account-id": "223342718081"
+			"vpc-id":     "vpc-0a95e30e5c79ce188"
+			"aws-region": "us-east-1"
+		}
+	}
+	"cdk-context-json": {
+		type: "generated"
+		params: job: "context-generator"
+	}
+	"acorn-service": {
+		type: "generated"
+		params: job: "render-service"
+	}
 }
