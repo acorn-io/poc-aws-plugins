@@ -10,32 +10,65 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsrds"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-var dbClusterName = "AcornRdsCluster"
-
-func getItemName(item string) *string {
-	return jsii.String(fmt.Sprintf("%s%s", dbClusterName, item))
+type instanceConfig struct {
+	DatabaseName string
+	AppName      string
+	Namespace    string
+	VPC_ID       string
 }
 
-func NewRDSStack(scope constructs.Construct, id string, props *awscdk.StackProps) awscdk.Stack {
+func newInstanceConfig() *instanceConfig {
+	db := getEnvWithDefault("DATABASE_NAME", "instance")
+	app := getEnvWithDefault("ACORN_APP", "app")
+	ns := getEnvWithDefault("ACORN_NAMESPACE", "acorn")
+	vpcId := getEnvWithDefault("VPC_ID", "")
+
+	return &instanceConfig{
+		DatabaseName: db,
+		AppName:      app,
+		Namespace:    ns,
+		VPC_ID:       vpcId,
+	}
+}
+
+func getEnvWithDefault(v, def string) string {
+	val := os.Getenv(v)
+	if val != "" {
+		return val
+	}
+	return def
+}
+
+func (ic *instanceConfig) getQualifiedName(item string) *string {
+	c := cases.Title(language.AmericanEnglish)
+	return jsii.String(fmt.Sprintf("%s%s%s%s", c.String(ic.AppName), c.String(ic.Namespace), c.String(ic.DatabaseName), c.String(item)))
+}
+
+func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.Stack {
 	var sprops awscdk.StackProps
 	if props != nil {
 		sprops = *props
 	}
-	stack := awscdk.NewStack(scope, &id, &sprops)
+
+	cfg := newInstanceConfig()
+
+	stack := awscdk.NewStack(scope, cfg.getQualifiedName("Stack"), &sprops)
 
 	vpc := awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
-		VpcId: jsii.String("vpc-0a95e30e5c79ce188"),
+		VpcId: jsii.String(cfg.VPC_ID),
 	})
 
-	sg := awsec2.NewSecurityGroup(stack, getItemName("SG"), &awsec2.SecurityGroupProps{
+	sg := awsec2.NewSecurityGroup(stack, cfg.getQualifiedName("SG"), &awsec2.SecurityGroupProps{
 		Vpc:              vpc,
 		AllowAllOutbound: jsii.Bool(true),
 		Description:      jsii.String("Acorn created Rds security group"),
 	})
 
-	subnetGroup := awsrds.NewSubnetGroup(stack, getItemName("SubnetGroup"), &awsrds.SubnetGroupProps{
+	subnetGroup := awsrds.NewSubnetGroup(stack, cfg.getQualifiedName("SubnetGroup"), &awsrds.SubnetGroupProps{
 		Description: jsii.String("RDS SUBNETS..."),
 		Vpc:         vpc,
 		VpcSubnets: &awsec2.SubnetSelection{
@@ -53,9 +86,9 @@ func NewRDSStack(scope constructs.Construct, id string, props *awscdk.StackProps
 
 	creds := awsrds.Credentials_FromGeneratedSecret(jsii.String("clusteradmin"), &awsrds.CredentialsBaseOptions{})
 
-	cluster := awsrds.NewServerlessCluster(stack, getItemName(id), &awsrds.ServerlessClusterProps{
+	cluster := awsrds.NewServerlessCluster(stack, cfg.getQualifiedName("Cluster"), &awsrds.ServerlessClusterProps{
 		Engine:              awsrds.DatabaseClusterEngine_AURORA_MYSQL(),
-		DefaultDatabaseName: jsii.String("instance"),
+		DefaultDatabaseName: jsii.String(cfg.DatabaseName),
 		CopyTagsToSnapshot:  jsii.Bool(true),
 		Credentials:         creds,
 		Vpc:                 vpc,
@@ -66,7 +99,7 @@ func NewRDSStack(scope constructs.Construct, id string, props *awscdk.StackProps
 		SecurityGroups: sgs,
 	})
 
-	awscdk.Tags_Of(cluster).Add(jsii.String("AcornSVC"), getItemName("-Owned"), &awscdk.TagProps{})
+	awscdk.Tags_Of(cluster).Add(jsii.String("AcornSVCOwner"), cfg.getQualifiedName(""), &awscdk.TagProps{})
 
 	port := "3306"
 	pSlice := strings.SplitN(*cluster.ClusterEndpoint().SocketAddress(), ":", 2)
@@ -74,16 +107,16 @@ func NewRDSStack(scope constructs.Construct, id string, props *awscdk.StackProps
 		port = pSlice[1]
 	}
 
-	awscdk.NewCfnOutput(stack, getItemName("-host"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("host"), &awscdk.CfnOutputProps{
 		Value: cluster.ClusterEndpoint().Hostname(),
 	})
-	awscdk.NewCfnOutput(stack, getItemName("-port"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("port"), &awscdk.CfnOutputProps{
 		Value: &port,
 	})
-	awscdk.NewCfnOutput(stack, getItemName("-username"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("username"), &awscdk.CfnOutputProps{
 		Value: creds.Username(),
 	})
-	awscdk.NewCfnOutput(stack, getItemName("-password-arn"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("adminPasswordArn"), &awscdk.CfnOutputProps{
 		Value: cluster.Secret().SecretArn(),
 	})
 
@@ -94,7 +127,7 @@ func main() {
 	defer jsii.Close()
 
 	app := awscdk.NewApp(nil)
-	NewRDSStack(app, "bill", &awscdk.StackProps{
+	NewRDSStack(app, &awscdk.StackProps{
 		Env: rdsenv(),
 	})
 
