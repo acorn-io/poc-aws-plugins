@@ -18,20 +18,21 @@ type instanceConfig struct {
 	DatabaseName string
 	AppName      string
 	Namespace    string
-	VPC_ID       string
+	VpcId        string
 }
 
+// Should move this to read a JSON file
 func newInstanceConfig() *instanceConfig {
-	db := getEnvWithDefault("DATABASE_NAME", "instance")
-	app := getEnvWithDefault("ACORN_APP", "app")
-	ns := getEnvWithDefault("ACORN_NAMESPACE", "acorn")
+	db := strings.ReplaceAll(getEnvWithDefault("DATABASE_NAME", "instance"), "-", "")
+	app := strings.ReplaceAll(getEnvWithDefault("ACORN_APP", "app"), "-", "")
+	ns := strings.ReplaceAll(getEnvWithDefault("ACORN_NAMESPACE", "acorn"), "-", "")
 	vpcId := getEnvWithDefault("VPC_ID", "")
 
 	return &instanceConfig{
 		DatabaseName: db,
 		AppName:      app,
 		Namespace:    ns,
-		VPC_ID:       vpcId,
+		VpcId:        vpcId,
 	}
 }
 
@@ -59,7 +60,7 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 	stack := awscdk.NewStack(scope, cfg.getQualifiedName("Stack"), &sprops)
 
 	vpc := awsec2.Vpc_FromLookup(stack, jsii.String("VPC"), &awsec2.VpcLookupOptions{
-		VpcId: jsii.String(cfg.VPC_ID),
+		VpcId: jsii.String(cfg.VpcId),
 	})
 
 	sg := awsec2.NewSecurityGroup(stack, cfg.getQualifiedName("SG"), &awsec2.SecurityGroupProps{
@@ -113,10 +114,10 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("port"), &awscdk.CfnOutputProps{
 		Value: &port,
 	})
-	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("username"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("adminusername"), &awscdk.CfnOutputProps{
 		Value: creds.Username(),
 	})
-	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("adminPasswordArn"), &awscdk.CfnOutputProps{
+	awscdk.NewCfnOutput(stack, cfg.getQualifiedName("adminpasswordarn"), &awscdk.CfnOutputProps{
 		Value: cluster.Secret().SecretArn(),
 	})
 
