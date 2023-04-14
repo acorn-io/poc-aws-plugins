@@ -1,4 +1,4 @@
-module github.com/acorn-io/rds-cdk
+module github.com/cloudnautique/poc-rds-plugin/rds-aurora-serverless-v1
 
 go 1.20
 

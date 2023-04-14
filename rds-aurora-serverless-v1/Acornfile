@@ -1,0 +1,120 @@
+args: {
+	dbName: "myapp"
+	instanceUsers: []
+}
+
+services: db: {
+	default: true
+	generated: job: "cdk-cfn-render"
+	
+}
+
+jobs: "context-generator": {
+	build: {
+		context:    "../cdk-render"
+		dockerfile: "../cdk-render/Dockerfile"
+	}
+	dirs: "/acorn/aws": "secret://aws-config"
+	env: {
+		OUTPUT_FILE:     "/run/secrets/output"
+		AWS_CONFIG_PATH: "/acorn/aws"
+	}
+	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCdkGenerateRole"
+}
+
+jobs: "cdk-cfn-render": {
+	sidecars: "cfn-render": {
+		init: true
+		build: {
+			context:    "."
+		}
+		files: "/app/cdk.context.json": "secret://cdk-context-json/content"
+		env: {
+			CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
+			CDK_DEFAULT_REGION:  "secret://aws-config/aws-region"
+			VPC_ID: "secret://aws-config/vpc-id"
+			ACORN_APP: "@{acorn.name}"
+			ACORN_NAMESPACE: "@{acorn.namespace}"
+			DATABASE_NAME: args.dbName
+		}
+		dirs: "/acorn/data": "volume://cfn-data"
+	}
+	build: {
+		context:    "../cfn-apply"
+		dockerfile: "../cfn-apply/Dockerfile"
+	}
+	env: {
+		ACORN_APP: "@{acorn.name}"
+		ACORN_NAMESPACE: "@{acorn.namespace}"
+		DATABASE_NAME: args.dbName
+	}
+    entrypoint: ["/app/cfn-apply.sh"]
+	files: "/app/render.sh": """
+	#!/bin/bash
+
+	set -e 
+
+	APP=$(sed 's/-//g' <<< ${ACORN_APP^})
+	NS=$(sed 's/-//g' <<< ${ACORN_NAMESPACE^})
+	DB=$(sed 's/-//g' <<< ${DATABASE_NAME^})
+
+	stackPfx="${APP}${NS}${DB}"
+
+
+	port="$(jq -r --arg PORT "${stackPfx}Port" '.[] | select(.OutputKey==$PORT)|.OutputValue' outputs.json )"
+	address="$(jq -r --arg HOST "${stackPfx}Host" '.[] | select(.OutputKey==$HOST)|.OutputValue' outputs.json )"
+	admin_username="$(jq -r --arg USER "${stackPfx}Adminusername" '.[] | select(.OutputKey==$USER)|.OutputValue' outputs.json )"
+	password_arn="$(jq -r --arg ARN "${stackPfx}Adminpasswordarn" '.[] | select(.OutputKey==$ARN)|.OutputValue' outputs.json )"
+	admin_password="$(aws --output json secretsmanager get-secret-value --secret-id "${password_arn}" --query 'SecretString' | jq -r .|jq -r .password)"
+
+	cat > /run/secrets/output<<EOF
+	services: db: {
+	    default: true
+	    address: "${address}"
+	    secrets: ["admin"]
+	    ports: [${port}]
+	    data: dbname: "instance"
+	}
+
+	secrets: "admin": {
+		type: "basic"
+		data: {
+	        username: "${admin_username}"
+	        password: "${admin_password}"
+	    }
+	}
+	EOF
+	"""
+	dependsOn: ["context-generator"]
+	dirs: "/acorn/data": "volume://cfn-data"
+	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnAdmin"
+}
+
+volumes: "cfn-data": class: "ephemeral"
+
+secrets: {
+    "admin": {
+        type: "generated"
+        params: {
+            job: "cdk-cfn-render"
+            format: "json"
+        }
+    }
+	"aws-config": {
+        external: "context://aws"
+		type: "opaque"
+		data: {
+			"account-id": ""
+			"vpc-id":     ""
+			"aws-region": ""
+		}
+	}
+	"cdk-context-json": {
+		type: "generated"
+		params: job: "context-generator"
+	}
+	"acorn-service": {
+		type: "generated"
+		params: job: "cdk-cfn-render"
+	}
+}
