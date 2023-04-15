@@ -19,7 +19,6 @@ jobs: "context-generator": {
 		OUTPUT_FILE:     "/run/secrets/output"
 		AWS_CONFIG_PATH: "/acorn/aws"
 	}
-	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCdkGenerateRole"
 }
 
 jobs: "cdk-cfn-render": {
@@ -87,7 +86,6 @@ jobs: "cdk-cfn-render": {
 	"""
 	dependsOn: ["context-generator"]
 	dirs: "/acorn/data": "volume://cfn-data"
-	annotations: "eks.amazonaws.com/role-arn": "arn:aws:iam::223342718081:role/billCfnAdmin"
 }
 
 volumes: "cfn-data": class: "ephemeral"
