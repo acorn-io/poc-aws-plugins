@@ -75,6 +75,9 @@ func main() {
 
 	app := awscdk.NewApp(nil)
 	NewRDSStack(app, &awscdk.StackProps{
+		Synthesizer: awscdk.NewDefaultStackSynthesizer(&awscdk.DefaultStackSynthesizerProps{
+			GenerateBootstrapVersionRule: jsii.Bool(false),
+		}),
 		Env: rdsenv(),
 	})
 
