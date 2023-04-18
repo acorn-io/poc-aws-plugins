@@ -19,6 +19,18 @@ jobs: "context-generator": {
 		OUTPUT_FILE:     "/run/secrets/output"
 		AWS_CONFIG_PATH: "/acorn/aws"
 	}
+	permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeRouteTables",
+            ]
+            resources: ["*"]
+        }
+    ]
 }
 
 jobs: "cdk-cfn-render": {
@@ -42,6 +54,23 @@ jobs: "cdk-cfn-render": {
 		context:    "../cfn-apply"
 		dockerfile: "../cfn-apply/Dockerfile"
 	}
+	permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:GetTemplateSummary",
+                "ssm:GetParameters",
+                "secretsmanager:*",
+                "ec2:*",
+                "rds:*"
+            ]
+            resources: ["*"]
+        }
+    ]
 	env: {
 		ACORN_APP: "@{acorn.name}"
 		ACORN_NAMESPACE: "@{acorn.namespace}"
