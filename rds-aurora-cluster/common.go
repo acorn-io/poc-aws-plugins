@@ -36,9 +36,10 @@ type instanceConfig struct {
 
 // Should move this to read a JSON file
 func newInstanceConfig() *instanceConfig {
-	db := strings.ReplaceAll(getEnvWithDefault("DATABASE_NAME", "instance"), "-", "")
-	app := strings.ReplaceAll(getEnvWithDefault("ACORN_APP", "app"), "-", "")
-	ns := strings.ReplaceAll(getEnvWithDefault("ACORN_NAMESPACE", "acorn"), "-", "")
+	db := getEnvWithDefault("DATABASE_NAME", "instance")
+	app := getEnvWithDefault("ACORN_APP", "app")
+	ns := getEnvWithDefault("ACORN_NAMESPACE", "acorn")
+	dbSize := getEnvWithDefault("DB_INSTANCE_SIZE", "medium")
 	vpcId := getEnvWithDefault("VPC_ID", "")
 
 	return &instanceConfig{
@@ -47,7 +48,7 @@ func newInstanceConfig() *instanceConfig {
 		Namespace:    ns,
 		VpcId:        vpcId,
 		Public:       false,
-		InstanceSize: "medium",
+		InstanceSize: dbSize,
 	}
 }
 
@@ -60,8 +61,12 @@ func getEnvWithDefault(v, def string) string {
 }
 
 func (ic *instanceConfig) getQualifiedName(item string) *string {
+	db := strings.ReplaceAll(ic.DatabaseName, "-", "")
+	app := strings.ReplaceAll(ic.AppName, "-", "")
+	ns := strings.ReplaceAll(ic.Namespace, "-", "")
+
 	c := cases.Title(language.AmericanEnglish)
-	return jsii.String(fmt.Sprintf("%s%s%s%s", c.String(ic.AppName), c.String(ic.Namespace), c.String(ic.DatabaseName), c.String(item)))
+	return jsii.String(fmt.Sprintf("%s%s%s%s", c.String(app), c.String(ns), c.String(db), c.String(item)))
 }
 
 func tagObject(con constructs.Construct) constructs.Construct {

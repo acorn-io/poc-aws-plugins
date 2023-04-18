@@ -1,5 +1,5 @@
 args: {
-	dbName: "myapp"
+	dbName: "instance"
 	instanceUsers: []
 }
 
@@ -101,7 +101,7 @@ jobs: "cdk-cfn-render": {
 	    address: "${address}"
 	    secrets: ["admin"]
 	    ports: [${port}]
-	    data: dbname: "instance"
+	    data: dbname: "${DATABASE_NAME}"
 	}
 
 	secrets: "admin": {
