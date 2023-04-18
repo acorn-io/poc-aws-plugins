@@ -1,5 +1,5 @@
 args: {
-	dbName: "myapp"
+	dbName: "instance"
 	instanceUsers: []
 }
 
@@ -14,6 +14,18 @@ jobs: "context-generator": {
 		context:    "../cdk-render"
 		dockerfile: "../cdk-render/Dockerfile"
 	}
+    permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeRouteTables",
+            ]
+            resources: ["*"]
+        }
+    ]
 	dirs: "/acorn/aws": "secret://aws-config"
 	env: {
 		OUTPUT_FILE:     "/run/secrets/output"
@@ -38,6 +50,23 @@ jobs: "cdk-cfn-render": {
 		}
 		dirs: "/acorn/data": "volume://cfn-data"
 	}
+    permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:GetTemplateSummary",
+                "ssm:GetParameters",
+                "secretsmanager:*",
+                "ec2:*",
+                "rds:*"
+            ]
+            resources: ["*"]
+        }
+    ]
 	build: {
 		context:    "../cfn-apply"
 		dockerfile: "../cfn-apply/Dockerfile"

@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 cdk synth --path-metadata false --lookups false > cfn.yaml
 
