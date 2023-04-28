@@ -1,0 +1,106 @@
+args: {
+}
+
+services: default: {
+	default: true
+	generated: job: "cdk-cfn-render"
+}
+
+// Uncomment below if CDK app will need cdk.context.json file.
+// the job will render an equivalent file without needing to 
+// bootstrap the environment.
+//
+//
+// jobs: "context-generator": {
+// 	build: {
+// 		context:    "../cdk-render"
+// 		dockerfile: "../cdk-render/Dockerfile"
+// 	}
+// 	dirs: "/acorn/aws": "secret://aws-config"
+// 	permissions: rules: [
+//         {
+//             apiGroup: "aws.acorn.io"
+//             verbs: [
+//                 "ec2:DescribeAvailabilityZones",
+//                 "ec2:DescribeVpcs",
+//                 "ec2:DescribeSubnets",
+//                 "ec2:DescribeRouteTables",
+//             ]
+//             resources: ["*"]
+//         }
+//     ]
+// }
+//
+// secrets: "cdk-context-json": {
+//   type: "generated"
+//   params: job: "context-generator"
+// }
+
+jobs: "cdk-cfn-render": {
+	sidecars: "cfn-render": {
+		init: true
+		build: {
+			context:    "."
+		}
+		// Uncomment if generating cdk.context.json
+		//files: "/app/cdk.context.json": "secret://cdk-context-json/content"
+		env: {
+			CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
+			CDK_DEFAULT_REGION:  "secret://aws-config/aws-region"
+			VPC_ID: "secret://aws-config/vpc-id"
+			WORKSPACE_NAME: "@{acorn.name}-@{acorn.namespace}"
+		}
+		dirs: "/acorn/data": "volume://cfn-data"
+	}
+	build: {
+		context:    "../cfn-apply"
+		dockerfile: "../cfn-apply/Dockerfile"
+	}
+	// Modify permissions to fit the scope of access needed to
+	// render the service Acorn.
+	permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:GetTemplateSummary",
+				"aps:*",
+            ]
+            resources: ["*"]
+        }
+    ]
+	env: {
+		ACORN_APP: "@{acorn.name}"
+		ACORN_NAMESPACE: "@{acorn.namespace}"
+	}
+    entrypoint: ["/app/cfn-apply.sh"]
+	//dependsOn: ["context-generator"]
+	dirs: {
+		"/acorn/data": "volume://cfn-data"
+		"/app/render.sh": "./render.sh"
+	}
+}
+
+volumes: "cfn-data": class: "ephemeral"
+
+secrets: {
+	"aws-config": {
+        external: "context://aws"
+		type: "opaque"
+		data: {
+			"account-id": ""
+			"vpc-id":     ""
+			"aws-region": ""
+		}
+	}
+	"amp-config": {
+		type: "generated"
+		params: {
+			job: "cdk-cfn-render"
+			format: "json"
+		}
+	}
+}
