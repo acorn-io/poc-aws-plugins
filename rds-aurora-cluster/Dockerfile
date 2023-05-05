@@ -5,11 +5,11 @@ WORKDIR /src
 
 RUN go build -o rds .
 
-FROM node:19-alpine3.16
+FROM node:18-alpine
 
 RUN npm install -g aws-cdk
 ADD . /app/
 WORKDIR /app
 COPY --from=build /src/rds .
 
-CMD [ "/app/cdk-synth.sh" ]
+CMD [ "/app/scripts/cdk-synth.sh" ]

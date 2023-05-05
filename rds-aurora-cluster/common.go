@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -19,37 +20,48 @@ var (
 		"small":  awsec2.InstanceSize_SMALL,
 		"medium": awsec2.InstanceSize_MEDIUM,
 	}
-	acornTags = map[string]string{
+	configFile = "/app/config.json"
+	acornTags  = map[string]string{
 		"acorn.io/managed": "true",
 	}
+	tags = map[string]string{}
 )
 
 type instanceConfig struct {
-	DatabaseName string   `json:"databaseName"`
-	AppName      string   `json:"appName"`
-	Namespace    string   `json:"namespace"`
-	VpcId        string   `json:"vpcId"`
-	Public       bool     `json:"public"`
-	InstanceSize string   `json:"instanceSize"`
-	Users        []string `json:"users"`
+	DatabaseName string            `json:"databaseName"`
+	AppName      string            `json:"appName"`
+	Namespace    string            `json:"namespace"`
+	VpcId        string            `json:"vpcId"`
+	Public       bool              `json:"public"`
+	InstanceSize string            `json:"instanceSize"`
+	AdminUser    string            `json:"adminUser"`
+	Tags         map[string]string `json:"tags"`
+}
+
+func instanceConfigFromFile() (*instanceConfig, error) {
+	conf := &instanceConfig{}
+	fileContent, err := os.ReadFile(configFile)
+	if err != nil {
+		return conf, err
+	}
+	err = json.Unmarshal(fileContent, conf)
+	return conf, err
 }
 
 // Should move this to read a JSON file
-func newInstanceConfig() *instanceConfig {
-	db := getEnvWithDefault("DATABASE_NAME", "instance")
-	app := getEnvWithDefault("ACORN_APP", "app")
-	ns := getEnvWithDefault("ACORN_NAMESPACE", "acorn")
-	dbSize := getEnvWithDefault("DB_INSTANCE_SIZE", "medium")
-	vpcId := getEnvWithDefault("VPC_ID", "")
-
-	return &instanceConfig{
-		DatabaseName: db,
-		AppName:      app,
-		Namespace:    ns,
-		VpcId:        vpcId,
-		Public:       false,
-		InstanceSize: dbSize,
+func NewInstanceConfig() (*instanceConfig, error) {
+	ic, err := instanceConfigFromFile()
+	if err != nil {
+		return ic, err
 	}
+
+	ic.AppName = getEnvWithDefault("ACORN_APP", "app")
+	ic.Namespace = getEnvWithDefault("ACORN_NAMESPACE", "acorn")
+	ic.VpcId = getEnvWithDefault("VPC_ID", "")
+
+	setTags(ic.Tags)
+
+	return ic, nil
 }
 
 func getEnvWithDefault(v, def string) string {
@@ -69,8 +81,17 @@ func (ic *instanceConfig) getQualifiedName(item string) *string {
 	return jsii.String(fmt.Sprintf("%s%s%s%s", c.String(app), c.String(ns), c.String(db), c.String(item)))
 }
 
-func tagObject(con constructs.Construct) constructs.Construct {
+func setTags(t map[string]string) {
+	for k, v := range t {
+		tags[k] = v
+	}
 	for k, v := range acornTags {
+		tags[k] = v
+	}
+}
+
+func tagObject(con constructs.Construct) constructs.Construct {
+	for k, v := range tags {
 		awscdk.Tags_Of(con).Add(jsii.String(k), jsii.String(v), &awscdk.TagProps{})
 	}
 	return con

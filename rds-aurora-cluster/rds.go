@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsrds"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
+	"github.com/sirupsen/logrus"
 )
 
 func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.Stack {
@@ -17,7 +18,10 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 		sprops = *props
 	}
 
-	cfg := newInstanceConfig()
+	cfg, err := NewInstanceConfig()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	stack := awscdk.NewStack(scope, cfg.getQualifiedName("Stack"), &sprops)
 
@@ -26,14 +30,12 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 	})
 
 	subnetGroup := getPrivateSubnetGroup(stack, cfg.getQualifiedName("SubnetGroup"), vpc)
-	//TODO:
-	//if !cfg.Public {}
 
 	sgs := &[]awsec2.ISecurityGroup{
 		getAllowAllVPCSecurityGroup(stack, cfg.getQualifiedName("SG"), vpc),
 	}
 
-	creds := awsrds.Credentials_FromGeneratedSecret(jsii.String("clusteradmin"), &awsrds.CredentialsBaseOptions{})
+	creds := awsrds.Credentials_FromGeneratedSecret(jsii.String(cfg.AdminUser), &awsrds.CredentialsBaseOptions{})
 
 	cluster := awsrds.NewDatabaseCluster(stack, cfg.getQualifiedName("Cluster"), &awsrds.DatabaseClusterProps{
 		Engine: awsrds.DatabaseClusterEngine_AuroraMysql(&awsrds.AuroraMysqlClusterEngineProps{

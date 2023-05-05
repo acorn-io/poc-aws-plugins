@@ -3,18 +3,21 @@
 set -e
 
 file="/acorn/data/cfn.yaml"
-APP=$(sed 's/-//g' <<< ${ACORN_APP^})
-NS=$(sed 's/-//g' <<< ${ACORN_NAMESPACE^})
-DB=$(sed 's/-//g' <<< ${DATABASE_NAME^})
 
-stackName="${APP}${NS}${DB}Stack"
+stackName="${1}"
+if [ $# -eq 0 ]; then
+    echo "No stack name defined..."
+    echo "syntax:  $0 [STACKNAME]"
+    exit 1
+fi 
 
+sanitizedName=$(sed 's/-//g' <<< ${stackName})
 
 echo "${file} found.."
 
-aws cloudformation deploy --template-file /acorn/data/cfn.yaml --stack-name ${stackName} --capabilities CAPABILITY_IAM --capabilities CAPABILITY_NAMED_IAM --no-cli-pager
-aws cloudformation describe-stacks --stack-name ${stackName} --query 'Stacks[0].Outputs' > outputs.json
+aws cloudformation deploy --template-file ${file} --stack-name "${sanitizedName}" --capabilities CAPABILITY_IAM --capabilities CAPABILITY_NAMED_IAM --no-cli-pager
+aws cloudformation describe-stacks --stack-name "${sanitizedName}" --query 'Stacks[0].Outputs' > outputs.json
 
-if [ -f /app/render.sh ]; then
-  /app/render.sh
+if [ -f /app/scripts/render.sh ]; then
+  /app/scripts/render.sh
 fi
