@@ -87,9 +87,6 @@ jobs: {
 	    dirs: {
 	    	"/acorn/data": "volume://cfn-data"
 	    	"/app/scripts": "./scripts"
-	    	if len(args.dbUsers) > 0 {
-	    		"/acorn/config/users": "secret://db-users"
-	    	}
 	    }
 	}
 
