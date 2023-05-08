@@ -100,8 +100,6 @@ jobs: {
 	    		MYSQL_DATABASE: args.dbName
 	    	}
 	    	entrypoint: ["/acorn/create_and_grant_users.sh"]
-			//entrypoint: ["sleep"]
-			//command: ["3600"]
 	    }
 	}
 }
