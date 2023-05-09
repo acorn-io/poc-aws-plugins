@@ -1,5 +1,5 @@
 {
-  "app": "go mod download && go run s3.go",
+  "app": "./s3",
   "watch": {
     "include": [
       "**"

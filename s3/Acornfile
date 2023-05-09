@@ -1,0 +1,74 @@
+args: {
+	s3BucketName: "@{acorn.name}"
+	s3BucketVersioned: "true"
+
+	// delete s3 bucket when CF stack is destroyed 
+	s3DeleteBucketOnDestroy: "true"
+}
+
+services: default: {
+	default: true
+	generated: job: "cdk-cfn-render"
+}
+
+
+jobs: "cdk-cfn-render": {
+	sidecars: "cfn-render": {
+		init: true
+		build: {
+			context:    "."
+		}
+		env: {
+			CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
+			CDK_DEFAULT_REGION:  "secret://aws-config/aws-region"
+			ACORN_APP: "@{acorn.name}"
+			ACORN_NAMESPACE: "@{acorn.namespace}"
+		}
+		dirs: "/acorn/data": "volume://cfn-data"
+	}
+	build: {
+		context:    "../cfn-apply"
+		dockerfile: "../cfn-apply/Dockerfile"
+	}
+	
+	permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "cloudformation:DescribeStacks",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:GetTemplateSummary",
+            
+				"s3:DeleteObject",
+   				"s3:GetBucket",
+    			"s3:List",
+			]
+            resources: ["*"]
+        }
+    ]
+
+	env: {
+		ACORN_APP: "@"
+		ACORN_NAMESPACE: "@{acorn.namespace}"
+		S3_BUCKET_NAME: args.s3BucketName
+		S3_BUCKET_VERSIONED: args.s3BucketVersioned
+		S3_DELETE_BUCKET_ON_DESTROY: args.s3DeleteBucketOnDestroy
+	}
+    entrypoint: ["/app/cfn-apply.sh"]
+	dirs: "/acorn/data": "volume://cfn-data"
+}
+
+volumes: "cfn-data": class: "ephemeral"
+
+secrets: {
+	"aws-config": {
+        external: "context://aws"
+		type: "opaque"
+		data: {
+			"account-id": ""
+			"aws-region": ""
+		}
+	}
+}
