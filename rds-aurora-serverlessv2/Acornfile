@@ -78,7 +78,7 @@ jobs: {
 	    	DATABASE_NAME: args.dbName
 	    }
         entrypoint: ["/app/scripts/stack_wrapper.sh"]
-	    onDelete: true
+	    events: ["create", "update", "delete"]
 	    dependsOn: ["context-generator"]
 	    dirs: {
 	    	"/acorn/data": "volume://cfn-data"
