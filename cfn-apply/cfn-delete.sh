@@ -15,7 +15,7 @@ if [ -z "${ACORN_EVENT}" ]; then
   exit 0
 fi
 
-if [ "${ACORN_EVENT}" = "onDelete" ]; then
+if [ "${ACORN_EVENT}" = "delete" ]; then
     aws cloudformation delete-stack --stack-name "${sanitizedName}"
     exit 0
 fi
