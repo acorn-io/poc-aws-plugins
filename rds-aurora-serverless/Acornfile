@@ -17,7 +17,6 @@ jobs: "context-generator": {
     dockerfile: "../cdk-render/Dockerfile"
   }
   dirs: "/acorn/aws": "secret://aws-config"
-  events: ["create", "update", "delete"]
   permissions: rules: [
   {
     apiGroup: "aws.acorn.io"
@@ -64,7 +63,10 @@ jobs: {
           "cloudformation:CreateChangeSet",
           "cloudformation:DescribeChangeSet",
           "cloudformation:ExecuteChangeSet",
+          "cloudformation:PreviewStackUpdate",
+          "cloudformation:UpdateStack",
           "cloudformation:GetTemplateSummary",
+          "cloudformation:DeleteStack",
           "ssm:GetParameters",
           "secretsmanager:*",
           "ec2:*",

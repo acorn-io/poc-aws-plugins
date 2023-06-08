@@ -66,6 +66,8 @@ jobs: {
                     "cloudformation:CreateChangeSet",
                     "cloudformation:DescribeChangeSet",
                     "cloudformation:ExecuteChangeSet",
+                    "cloudformation:PreviewStackUpdate",
+                    "cloudformation:UpdateStack",
                     "cloudformation:GetTemplateSummary",
                     "cloudformation:DeleteStack",
                     "ssm:GetParameters",
