@@ -3,7 +3,7 @@
 set -e
 
 cfn_script="/app/cfn-apply.sh"
-if [ "${ACORN_EVENT}" = "onDelete" ]; then
+if [ "${ACORN_EVENT}" = "delete" ]; then
   cfn_script="/app/cfn-delete.sh"
 fi
 
