@@ -1,0 +1,100 @@
+args: {
+	adminUser: "admin"
+	dbName:    "instance"
+	// options: small, medium
+	instanceSize: "medium"
+	tags: {}
+	// Map of username:enc-passwords pairs. These users will be
+	// granted all access to the db created by --db-name.
+	dbUsers: {}
+}
+
+services: rds: {
+	default: true
+	generated: job: "apply"
+}
+
+services: context: {
+	build: "../../lib/cdk"
+}
+
+jobs: "apply": {
+	build: {
+		context: ".."
+		buildArgs: MAIN: "aurora-cluster"
+	}
+	files: {
+		"/app/cdk.context.json": "@{services.context.data.cdkContext}"
+		"/app/config.json":      std.toJSON(localData.config)
+	}
+	env: {
+		CDK_DEFAULT_ACCOUNT: "@{services.context.data.accountID}"
+		CDK_DEFAULT_REGION:  "@{services.context.data.region}"
+		VPC_ID:              "@{services.context.data.vpcID}"
+		ACORN_APP:           "@{acorn.name}"
+		ACORN_NAMESPACE:     "@{acorn.namespace}"
+		DATABASE_NAME:       args.dbName
+	}
+	permissions: rules: [{
+		apiGroup: "aws.acorn.io"
+		verbs: [
+			"cloudformation:DescribeStacks",
+			"cloudformation:CreateChangeSet",
+			"cloudformation:DescribeStackEvents",
+			"cloudformation:DescribeChangeSet",
+			"cloudformation:ExecuteChangeSet",
+			"cloudformation:PreviewStackUpdate",
+			"cloudformation:UpdateStack",
+			"cloudformation:GetTemplateSummary",
+			"cloudformation:DeleteStack",
+			"ssm:GetParameters",
+			"secretsmanager:*",
+			"ec2:*",
+			"rds:*",
+		]
+		resources: ["*"]
+	}]
+	events: ["create", "update", "delete"]
+}
+
+if len(args.dbUsers) > 0 {
+	jobs: "sql-client": {
+		image: "mariadb:10"
+		dependsOn: ["apply"]
+		dirs: {
+			"/acorn/users":                     "secret://db-users"
+			"/acorn/create_and_grant_users.sh": "./scripts/create_and_grant_users.sh"
+		}
+		env: {
+			MYSQL_ADMIN_USER: args.adminUser
+			MYSQL_PASSWORD:   "@{secrets.admin.password}"
+			MYSQL_HOST:       "@{service.rds.address}"
+			MYSQL_DATABASE:   args.dbName
+		}
+		entrypoint: ["/acorn/create_and_grant_users.sh"]
+	}
+}
+
+secrets: {
+	"admin": {
+		type: "generated"
+		params: job: "apply"
+	}
+	if len(args.dbUsers) > 0 {
+		"db-users": {
+			type: "opaque"
+			data: {
+				for k, v in args.dbUsers {"\(k)": v}
+			}
+		}
+	}
+}
+
+localData: {
+	config: {
+		databaseName: args.dbName
+		adminUser:    args.adminUser
+		tags:         args.tags
+		instanceSize: args.instanceSize
+	}
+}
