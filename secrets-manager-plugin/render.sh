@@ -1,17 +1,18 @@
 #!/bin/bash
-
-set -e
+set -e -o pipefail
 
 arn="${1}"
 
-data="$(aws --output json secretsmanager get-secret-value --secret-id "${arn}" --query 'SecretString' | jq -r .|jq '.'|sed 's/,$//')"
+echo Getting secret value for "$arn"
+data="$(aws --output json secretsmanager get-secret-value --secret-id "${arn}" | jq '{value: .SecretString}')"
 
-cat > /run/secrets/output<<EOF
+cat > /run/secrets/output <<EOF
 services: "secret-manager": {
+    default: true
     secrets: ["secret-value"]
 }
 
-secrets: "secret-value": {
+secrets: "item": {
     type: "opaque"
     data: ${data}
 }

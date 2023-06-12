@@ -1,57 +1,51 @@
 args: {
-    // Secret Manager ARN
-    arn: ""
-    // Cron based schedule
-    refreshSchedule: ""
+	// Secret Manager ARN
+	arn: ""
+	// Cron based schedule
+	refreshSchedule: ""
 }
 
 services: "secret-manager": {
-    generated: job: "generate-secrets"
+	generated: job: "generate-secrets"
 }
 
-//
 jobs: {
-    "generate-secrets": {
-        build: {
-            context: "."
-        }
-        if args.refreshSchedule != "" {
-            schedule: args.refreshSchedule
-        }
-        env: {
-            AWS_REGION: "secret://aws-config/aws-region"
-        }
-        command: [args.arn]
-        dirs: "/acorn/data": "volume://cfn-data"
-        permissions: rules: [
-            {
-                apiGroup: "aws.acorn.io"
-                verbs: [
-                    "secretsmanager:GetSecretValue",
-                ]
-                resources: ["\(args.arn)"]
-            }
-        ] 
-    }
+	"generate-secrets": {
+		build: {
+			context: "."
+		}
+		schedule: args.refreshSchedule
+		env: {
+			AWS_REGION: "secret://aws-config/aws-region"
+		}
+		command: [args.arn]
+		permissions: rules: [
+			{
+				apiGroup: "aws.acorn.io"
+				verbs: [
+					"secretsmanager:GetSecretValue",
+				]
+				resources: ["\(args.arn)"]
+			},
+		]
+	}
 }
-
-volumes: "cfn-data": class: "ephemeral"
 
 secrets: {
-    "aws-config": {
-        external: "context://aws"
-    	type: "opaque"
-    	data: {
-    		"account-id": ""
-    		"vpc-id":     ""
-    		"aws-region": ""
-    	}
-    }
-    "secret-value": {
-        type: "generated"
-        params:{
-            job: "generate-secrets"
-            format: "json"
-        }
-    }
+	"aws-config": {
+		external: "context://aws"
+		type:     "opaque"
+		data: {
+			"account-id": ""
+			"vpc-id":     ""
+			"aws-region": ""
+		}
+	}
+	"item": {
+		type: "generated"
+		params: {
+			job:    "generate-secrets"
+			format: "json"
+		}
+	}
 }
