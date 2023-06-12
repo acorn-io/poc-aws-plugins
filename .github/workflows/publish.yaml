@@ -3,7 +3,7 @@ name: Publish Acorn service image
 on:
   push:
     tags:
-      - "*/v[0-9]*"
+      - "**/v[0-9]*"
 
 jobs:
   publish:
