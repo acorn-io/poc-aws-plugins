@@ -1,9 +1,7 @@
 args: {
 	adminUsername: "admin"
 	username:      ""
-	// options: small, medium
-	instanceSize: "medium"
-	dbName:    "instance"
+	dbName:        "instance"
 	tags: {}
 }
 
@@ -32,8 +30,8 @@ jobs: "apply": {
 		ACORN_ACCOUNT:       "@{acorn.account}"
 		ACORN_NAME:          "@{acorn.name}"
 		ACORN_PROJECT:       "@{acorn.project}"
-		DB_USERNAME:         args.username
 		DB_NAME:             args.dbName
+		DB_USERNAME:         args.username
 	}
 	permissions: rules: [{
 		apiGroup: "aws.acorn.io"
@@ -61,7 +59,7 @@ if args.username != "" {
 	jobs: "create-user": {
 		build: {
 			context: ".."
-			target: "user"
+			target:  "user"
 		}
 		dependsOn: ["apply"]
 		env: {
@@ -69,14 +67,14 @@ if args.username != "" {
 			MYSQL_ADMIN_PASSWORD: "@{secrets.admin.password}"
 			MYSQL_USER:           args.username
 			MYSQL_PASSWORD:       "@{secrets.user.password}"
-			MYSQL_HOST:       "@{service.rds.address}"
-			MYSQL_DATABASE:   args.dbName
+			MYSQL_HOST:           "@{service.rds.address}"
+			MYSQL_DATABASE:       args.dbName
 		}
 	}
 
 	secrets: user: {
 		type: "basic"
-			data: {
+		data: {
 			username: args.username
 		}
 	}

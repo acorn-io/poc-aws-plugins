@@ -2,7 +2,14 @@ FROM cgr.dev/chainguard/go as build
 ARG MAIN
 WORKDIR /src
 COPY . .
-RUN --mount=type=cache,target=/root/go/pkg --mount=type=cache,target=/root/.cache/go-build go build -o rds ./${MAIN}
+RUN --mount=type=cache,target=/root/go/pkg \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o rds ./${MAIN}
+
+FROM cgr.dev/chainguard/mariadb as user
+WORKDIR /app
+COPY ./scripts ./scripts
+ENTRYPOINT ["/app/scripts/create_and_grant_users.sh"]
 
 FROM cgr.dev/chainguard/wolfi-base
 RUN apk add -U --no-cache nodejs bash busybox aws-cli jq curl zip && \

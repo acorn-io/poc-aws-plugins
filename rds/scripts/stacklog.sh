@@ -7,5 +7,5 @@ while sleep 5; do
             SEEN="$SEEN $TS"
             echo $TS $REST
         fi <<< "$SEEN"
-    done < <(aws cloudformation describe-stack-events --stack-name $1 | jq -r '.StackEvents[] | [ .Timestamp, .ResourceStatus, .ResourceType, .LogicalResourceId, .PhysicalResourceId] | join(" ")' | sort)
+    done < <(aws cloudformation describe-stack-events --stack-name $1 | jq -r '.StackEvents[] | [ .Timestamp, .ResourceStatus, .ResourceType, .ResourceStatusReason, .LogicalResourceId, .PhysicalResourceId] | join(" ")' | sort)
 done

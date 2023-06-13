@@ -2,17 +2,16 @@ package rds
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"strings"
 
-	"github.com/aws/aws-cdk-go/awscdk/v2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsec2"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awsrds"
 	"github.com/aws/constructs-go/constructs/v10"
 	"github.com/aws/jsii-runtime-go"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
+)
+
+const (
+	configFile = "/app/config.json"
 )
 
 var (
@@ -20,22 +19,20 @@ var (
 		"small":  awsec2.InstanceSize_SMALL,
 		"medium": awsec2.InstanceSize_MEDIUM,
 	}
-	configFile = "/app/config.json"
-	acornTags  = map[string]string{
-		"acorn.io/managed": "true",
+	acornTags = map[string]string{
+		"acorn.io/managed":      "true",
+		"acorn.io/project-name": os.Getenv("ACORN_PROJECT"),
+		"acorn.io/acorn-name":   os.Getenv("ACORN_NAME"),
+		"acorn.io/account-id":   os.Getenv("ACORN_ACCOUNT"),
 	}
-	tags = map[string]string{}
 )
 
 type instanceConfig struct {
-	DatabaseName string            `json:"databaseName"`
-	AppName      string            `json:"appName"`
-	Namespace    string            `json:"namespace"`
-	VpcId        string            `json:"vpcId"`
-	Public       bool              `json:"public"`
+	DatabaseName string            `json:"dbName"`
 	InstanceSize string            `json:"instanceSize"`
-	AdminUser    string            `json:"adminUser"`
+	AdminUser    string            `json:"adminUsername"`
 	Tags         map[string]string `json:"tags"`
+	VpcID        string
 }
 
 func instanceConfigFromFile() (*instanceConfig, error) {
@@ -45,65 +42,46 @@ func instanceConfigFromFile() (*instanceConfig, error) {
 		return conf, err
 	}
 	err = json.Unmarshal(fileContent, conf)
-	return conf, err
+	if err != nil {
+		return nil, err
+	}
+	conf.VpcID = os.Getenv("VPC_ID")
+	return conf, nil
 }
 
-// Should move this to read a JSON file
 func NewInstanceConfig() (*instanceConfig, error) {
 	ic, err := instanceConfigFromFile()
 	if err != nil {
 		return ic, err
 	}
 
-	ic.AppName = getEnvWithDefault("ACORN_APP", "app")
-	ic.Namespace = getEnvWithDefault("ACORN_NAMESPACE", "acorn")
-	ic.VpcId = getEnvWithDefault("VPC_ID", "")
-
-	setTags(ic.Tags)
-
 	return ic, nil
 }
 
-func getEnvWithDefault(v, def string) string {
-	val := os.Getenv(v)
-	if val != "" {
-		return val
+func AppendGlobalTags(tags *map[string]*string, newTags map[string]string) *map[string]*string {
+	result := map[string]*string{}
+	if tags != nil {
+		for k, v := range *tags {
+			result[k] = v
+		}
 	}
-	return def
-}
-
-func (ic *instanceConfig) GetQualifiedName(item string) *string {
-	db := strings.ReplaceAll(ic.DatabaseName, "-", "")
-	app := strings.ReplaceAll(ic.AppName, "-", "")
-	ns := strings.ReplaceAll(ic.Namespace, "-", "")
-
-	c := cases.Title(language.AmericanEnglish)
-	return jsii.String(fmt.Sprintf("%s%s%s%s", c.String(app), c.String(ns), c.String(db), c.String(item)))
-}
-
-func setTags(t map[string]string) {
-	for k, v := range t {
-		tags[k] = v
+	for k, v := range newTags {
+		result[k] = jsii.String(v)
 	}
 	for k, v := range acornTags {
-		tags[k] = v
+		if v != "" {
+			result[k] = jsii.String(v)
+		}
 	}
-}
-
-func TagObject(con constructs.Construct) constructs.Construct {
-	for k, v := range tags {
-		awscdk.Tags_Of(con).Add(jsii.String(k), jsii.String(v), &awscdk.TagProps{})
-	}
-	return con
+	return &result
 }
 
 func GetAllowAllVPCSecurityGroup(scope constructs.Construct, name *string, vpc awsec2.IVpc) awsec2.SecurityGroup {
 	sg := awsec2.NewSecurityGroup(scope, name, &awsec2.SecurityGroupProps{
 		Vpc:              vpc,
 		AllowAllOutbound: jsii.Bool(true),
-		Description:      jsii.String("Acorn created Rds security group"),
+		Description:      jsii.String("Acorn created RDS security group"),
 	})
-	TagObject(sg)
 
 	for _, i := range *vpc.PrivateSubnets() {
 		sg.AddIngressRule(awsec2.Peer_Ipv4(i.Ipv4CidrBlock()), awsec2.Port_Tcp(jsii.Number(3306)), jsii.String("Allow from private subnets"), jsii.Bool(false))
@@ -116,13 +94,12 @@ func GetAllowAllVPCSecurityGroup(scope constructs.Construct, name *string, vpc a
 
 func GetPrivateSubnetGroup(scope constructs.Construct, name *string, vpc awsec2.IVpc) awsrds.SubnetGroup {
 	subnetGroup := awsrds.NewSubnetGroup(scope, name, &awsrds.SubnetGroupProps{
-		Description: jsii.String("RDS SUBNETS..."),
+		Description: jsii.String("Acorn created RDS Subnets"),
 		Vpc:         vpc,
 		VpcSubnets: &awsec2.SubnetSelection{
 			SubnetType: awsec2.SubnetType_PRIVATE_WITH_EGRESS,
 		},
 	})
-	TagObject(subnetGroup)
 
 	return subnetGroup
 }
