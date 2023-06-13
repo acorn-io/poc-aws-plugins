@@ -33,27 +33,23 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 	})
 
 	subnetGroup := rds.GetPrivateSubnetGroup(stack, jsii.String("SubnetGroup"), vpc)
-
 	sgs := &[]awsec2.ISecurityGroup{
 		rds.GetAllowAllVPCSecurityGroup(stack, jsii.String("SG"), vpc),
 	}
 
 	creds := awsrds.Credentials_FromGeneratedSecret(jsii.String(cfg.AdminUser), &awsrds.CredentialsBaseOptions{})
 
-	cluster := awsrds.NewDatabaseCluster(stack, jsii.String("Cluster"), &awsrds.DatabaseClusterProps{
-		Engine: awsrds.DatabaseClusterEngine_AuroraMysql(&awsrds.AuroraMysqlClusterEngineProps{
-			Version: awsrds.AuroraMysqlEngineVersion_VER_3_03_0(),
-		}),
+	cluster := awsrds.NewServerlessCluster(stack, jsii.String("Cluster"), &awsrds.ServerlessClusterProps{
+		Engine:              awsrds.DatabaseClusterEngine_AURORA_MYSQL(),
 		DefaultDatabaseName: jsii.String(cfg.DatabaseName),
 		CopyTagsToSnapshot:  jsii.Bool(true),
 		Credentials:         creds,
-		InstanceProps: &awsrds.InstanceProps{
-			Vpc:            vpc,
-			SecurityGroups: sgs,
-			InstanceType:   awsec2.InstanceType_Of(awsec2.InstanceClass_BURSTABLE3, rds.SizeMap[cfg.InstanceSize]),
+		Vpc:                 vpc,
+		Scaling: &awsrds.ServerlessScalingOptions{
+			AutoPause: awscdk.Duration_Minutes(jsii.Number(10)),
 		},
-		Instances:   jsii.Number(1),
-		SubnetGroup: subnetGroup,
+		SubnetGroup:    subnetGroup,
+		SecurityGroups: sgs,
 	})
 
 	port := "3306"
