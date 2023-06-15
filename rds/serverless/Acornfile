@@ -57,10 +57,7 @@ jobs: "apply": {
 
 if args.username != "" {
 	jobs: "create-user": {
-		build: {
-			context: ".."
-			target:  "user"
-		}
+		build: images.user.containerBuild
 		dependsOn: ["apply"]
 		env: {
 			MYSQL_ADMIN_USER:     args.adminUsername
@@ -78,6 +75,13 @@ if args.username != "" {
 			username: args.username
 		}
 	}
+}
+
+images: user: {
+    containerBuild: {
+        context: ".."
+        target:  "user"
+    }
 }
 
 secrets: {

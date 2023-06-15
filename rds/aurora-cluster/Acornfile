@@ -1,9 +1,7 @@
 args: {
 	adminUsername: "admin"
 	username:      ""
-	// options: small, medium
-	instanceSize: "medium"
-	dbName:    "instance"
+	dbName:        "instance"
 	tags: {}
 }
 
@@ -19,7 +17,7 @@ services: "cdk-context": {
 jobs: "apply": {
 	build: {
 		context: ".."
-		buildArgs: MAIN: "serverless"
+		buildArgs: MAIN: "aurora-cluster"
 	}
 	files: {
 		"/app/cdk.context.json": "@{services.cdk-context.data.cdkContext}"
@@ -32,8 +30,8 @@ jobs: "apply": {
 		ACORN_ACCOUNT:       "@{acorn.account}"
 		ACORN_NAME:          "@{acorn.name}"
 		ACORN_PROJECT:       "@{acorn.project}"
-		DB_USERNAME:         args.username
 		DB_NAME:             args.dbName
+		DB_USERNAME:         args.username
 	}
 	permissions: rules: [{
 		apiGroup: "aws.acorn.io"
@@ -59,27 +57,31 @@ jobs: "apply": {
 
 if args.username != "" {
 	jobs: "create-user": {
-		build: {
-			context: ".."
-			target: "user"
-		}
+		build: images.user.containerBuild
 		dependsOn: ["apply"]
 		env: {
 			MYSQL_ADMIN_USER:     args.adminUsername
 			MYSQL_ADMIN_PASSWORD: "@{secrets.admin.password}"
 			MYSQL_USER:           args.username
 			MYSQL_PASSWORD:       "@{secrets.user.password}"
-			MYSQL_HOST:       "@{service.rds.address}"
-			MYSQL_DATABASE:   args.dbName
+			MYSQL_HOST:           "@{service.rds.address}"
+			MYSQL_DATABASE:       args.dbName
 		}
 	}
 
 	secrets: user: {
 		type: "basic"
-			data: {
+		data: {
 			username: args.username
 		}
 	}
+}
+
+images: user: {
+    containerBuild: {
+        context: ".."
+        target:  "user"
+    }
 }
 
 secrets: {
