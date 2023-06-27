@@ -8,6 +8,8 @@ export class BackupStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const uid = cdk.Fn.select(0, cdk.Fn.split('-', cdk.Fn.select(2, cdk.Fn.split('/', this.stackId))))
+
     const backupRole = new iam.Role(this, 'Role', {
       assumedBy: new iam.ServicePrincipal('backup.amazonaws.com'),
       description: 'Role allows AWS Backup service required access to other services',
@@ -15,7 +17,7 @@ export class BackupStack extends cdk.Stack {
     });
 
     const backupVault = new backup.BackupVault(this, 'BackupVault', {
-      backupVaultName: "backup_vault_name",
+      backupVaultName: `acorn_backup_${uid}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY
     })
 
@@ -24,7 +26,7 @@ export class BackupStack extends cdk.Stack {
     const backupSelection = new backup.BackupSelection(this, 'BackupSelection', {
       backupPlan: plan,
       allowRestores: true,
-      backupSelectionName: "acorn_backups",
+      backupSelectionName: `acorn_backups_${uid}`,
       resources: [
         backup.BackupResource.fromTag("acorn.io/backup", "true", backup.TagOperation.STRING_EQUALS)
 
