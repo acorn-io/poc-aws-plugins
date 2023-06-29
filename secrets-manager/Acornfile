@@ -3,6 +3,10 @@ args: {
 	arn: ""
 	// Cron based schedule
 	refreshSchedule: ""
+	// Format of the secret. If json the object must be in the format of a JSON object with only string values
+	format: "text" | "json"
+	// Region containing the secret
+	region: ""
 }
 
 services: "secret-manager": {
@@ -16,7 +20,11 @@ jobs: {
 		}
 		schedule: args.refreshSchedule
 		env: {
+			// Default region
 			AWS_REGION: "secret://aws-config/aws-region"
+			// User specified region
+			REGION: args.region
+			FORMAT: args.format
 		}
 		command: [args.arn]
 		permissions: rules: [
