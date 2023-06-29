@@ -47,6 +47,7 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 		DefaultDatabaseName: jsii.String(cfg.DatabaseName),
 		CopyTagsToSnapshot:  jsii.Bool(true),
 		Credentials:         creds,
+		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
 		InstanceProps: &awsrds.InstanceProps{
 			Vpc:            vpc,
 			SecurityGroups: sgs,

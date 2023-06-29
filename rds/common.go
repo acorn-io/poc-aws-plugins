@@ -18,6 +18,7 @@ var (
 	SizeMap = map[string]awsec2.InstanceSize{
 		"small":  awsec2.InstanceSize_SMALL,
 		"medium": awsec2.InstanceSize_MEDIUM,
+		"large":  awsec2.InstanceSize_LARGE,
 	}
 	acornTags = map[string]string{
 		"acorn.io/managed":      "true",
