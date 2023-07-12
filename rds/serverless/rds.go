@@ -43,7 +43,8 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 		Engine:              awsrds.DatabaseClusterEngine_AURORA_MYSQL(),
 		DefaultDatabaseName: jsii.String(cfg.DatabaseName),
 		CopyTagsToSnapshot:  jsii.Bool(true),
-		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
+		DeletionProtection:  jsii.Bool(cfg.DeletionProtection),
+		RemovalPolicy:       awscdk.RemovalPolicy_SNAPSHOT,
 		Credentials:         creds,
 		Vpc:                 vpc,
 		Scaling: &awsrds.ServerlessScalingOptions{
