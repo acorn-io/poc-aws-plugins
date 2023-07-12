@@ -1,0 +1,124 @@
+services: backup: {
+	default: true
+	generated: job: "cdk-cfn-render"
+}
+
+jobs: "context-generator": {
+	build: {
+		context:    "../cdk-render"
+		dockerfile: "../cdk-render/Dockerfile"
+	}
+	dirs: "/acorn/aws": "secret://aws-config"
+	permissions: rules: [
+        {
+            apiGroup: "aws.acorn.io"
+            verbs: [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeRouteTables",
+            ]
+            resources: ["*"]
+        }
+    ]
+}
+
+jobs: {
+	"cdk-cfn-render": {
+	    sidecars: "cfn-render": {
+	    	init: true
+	    	build: {
+	    		context:    "."
+	    	}
+	    	files: {
+	    		"/app/cdk.context.json": "secret://cdk-context-json/content"
+	    		// "/app/config.json": std.toJSON(localData.config)
+	    	}
+	    	env: {
+	    		CDK_DEFAULT_ACCOUNT: "secret://aws-config/account-id"
+	    		CDK_DEFAULT_REGION:  "secret://aws-config/aws-region"
+	    		ACORN_APP: "@{acorn.name}"
+	    		ACORN_NAMESPACE: "@{acorn.namespace}"
+	    	}
+	    	dirs: "/acorn/data": "volume://cfn-data"
+	    }
+	    build: {
+	    	context:    "../cfn-apply"
+	    	dockerfile: "../cfn-apply/Dockerfile"
+	    }
+	    permissions: rules: [
+            {
+                apiGroup: "aws.acorn.io"
+                verbs: [
+                    "cloudformation:DescribeStacks",
+                    "cloudformation:CreateChangeSet",
+                    "cloudformation:DescribeChangeSet",
+                    "cloudformation:ExecuteChangeSet",
+                    "cloudformation:PreviewStackUpdate",
+                    "cloudformation:UpdateStack",
+                    "cloudformation:GetTemplateSummary",
+                    "cloudformation:DeleteStack",
+                    "ssm:GetParameters",
+                    "secretsmanager:*",
+					"backup:*",
+					"backup-storage:MountCapsule",
+					"kms:CreateKey",
+					"kms:PutKeyPolicy",
+					"kms:CreateGrant",
+					"kms:GenerateKeyData",
+					"kms:Decrypt",
+					"kms:RetireGrant",
+					"kms:DescribeKey",
+					"kms:ScheduleKeyDeletion",
+					"iam:CreateRole",
+					"iam:DeleteRole",
+					"iam:AttachRolePolicy",
+					"iam:DetachRolePolicy",
+					"iam:TagRole",
+					"iam:GetRole",
+					"iam:PassRole",
+                ]
+                resources: ["*"]
+            }
+        ]
+	    env: {
+	    	ACORN_APP: "@{acorn.name}"
+	    	ACORN_NAMESPACE: "@{acorn.namespace}"
+	    }
+        entrypoint: ["/app/scripts/stack_wrapper.sh"]
+	    events: ["create", "update", "delete"]
+	    dependsOn: ["context-generator"]
+	    dirs: {
+	    	"/acorn/data": "volume://cfn-data"
+	    	"/app/scripts": "./scripts"
+	    }
+	}
+}
+
+volumes: "cfn-data": class: "ephemeral"
+
+secrets: {
+    "admin": {
+        type: "generated"
+        params: {
+            job: "cdk-cfn-render"
+            format: "json"
+        }
+    }
+	"aws-config": {
+        external: "context://aws"
+		type: "opaque"
+		data: {
+			"account-id": ""
+			"aws-region": ""
+		}
+	}
+	"cdk-context-json": {
+		type: "generated"
+		params: job: "context-generator"
+	}
+	"acorn-service": {
+		type: "generated"
+		params: job: "cdk-cfn-render"
+	}
+}
