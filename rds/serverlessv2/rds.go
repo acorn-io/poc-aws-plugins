@@ -59,8 +59,9 @@ func NewRDSStack(scope constructs.Construct, props *awscdk.StackProps) awscdk.St
 			Version: awsrds.AuroraMysqlEngineVersion_VER_3_03_0(),
 		}),
 		DefaultDatabaseName: jsii.String(cfg.DatabaseName),
+		DeletionProtection:  jsii.Bool(cfg.DeletionProtection),
 		CopyTagsToSnapshot:  jsii.Bool(true),
-		RemovalPolicy:       awscdk.RemovalPolicy_DESTROY,
+		RemovalPolicy:       awscdk.RemovalPolicy_SNAPSHOT,
 		Credentials:         creds,
 		InstanceProps: &awsrds.InstanceProps{
 			Vpc:            vpc,

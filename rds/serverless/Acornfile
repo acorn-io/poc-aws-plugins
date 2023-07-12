@@ -3,9 +3,11 @@ args: {
 	adminUsername: "admin"
 	// Name of an additional user to create. This user will have complete access to the database.
 	// If left blank, no additional user will be created.
-	username:      ""
+	username: ""
 	// Name of the database instance. Default is instance.
-	dbName:        "instance"
+	dbName: "instance"
+	// Deletion protection, you must set to false in order for the RDS db to be deleted. Default is false
+	deletionProtection: false
 	// Key value pairs of tags to apply to the RDS cluster and all other resources.
 	tags: {}
 }
@@ -15,11 +17,9 @@ services: rds: {
 	generated: job: "apply"
 }
 
-services: "cdk-context": {
-	build: "../../lib/cdk"
-}
+services: "cdk-context": build: "../../lib/cdk"
 
-jobs: "apply": {
+jobs: apply: {
 	build: {
 		context: ".."
 		buildArgs: MAIN: "serverless"
@@ -56,7 +56,7 @@ jobs: "apply": {
 			"rds:*",
 		]
 		resources: ["*"]
-	},{
+	}, {
 		apiGroup: "aws.acorn.io"
 		verbs: [
 			"iam:CreateServiceLinkedRole",
@@ -82,22 +82,16 @@ if args.username != "" {
 
 	secrets: user: {
 		type: "basic"
-		data: {
-			username: args.username
-		}
+		data: username: args.username
 	}
 }
 
-images: user: {
-    containerBuild: {
-        context: ".."
-        target:  "user"
-    }
+images: user: containerBuild: {
+	context: ".."
+	target:  "user"
 }
 
-secrets: {
-	"admin": {
-		type: "generated"
-		params: job: "apply"
-	}
+secrets: admin: {
+	type: "generated"
+	params: job: "apply"
 }

@@ -6,6 +6,8 @@ args: {
 	username: ""
 	// Name of the database. Default is instance
 	dbName: "instance"
+	// Deletion protection, you must set to false in order for the RDS db to be deleted. Default is false
+	deletionProtection: false
 	// Size of the instance. Default is small
 	instanceSize: "small"
 	// Key value pairs of tags to apply to the RDS cluster and all other resources.

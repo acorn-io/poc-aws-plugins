@@ -29,11 +29,12 @@ var (
 )
 
 type instanceConfig struct {
-	DatabaseName string            `json:"dbName"`
-	InstanceSize string            `json:"instanceSize"`
-	AdminUser    string            `json:"adminUsername"`
-	Tags         map[string]string `json:"tags"`
-	VpcID        string
+	DatabaseName       string            `json:"dbName"`
+	InstanceSize       string            `json:"instanceSize"`
+	AdminUser          string            `json:"adminUsername"`
+	Tags               map[string]string `json:"tags"`
+	DeletionProtection bool              `json:"deletionProtection"`
+	VpcID              string
 }
 
 func instanceConfigFromFile() (*instanceConfig, error) {
