@@ -3,9 +3,21 @@ set -e -x
 
 STACK_NAME="acorn-${ACORN_ACCOUNT}-${ACORN_PROJECT}-${ACORN_NAME//\./-}-${DB_NAME//\./-}"
 
+# Start logging
+./scripts/stacklog.sh ${STACK_NAME} &
+
 if [ "${ACORN_EVENT}" = "delete" ]; then
     aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+    aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}" --no-cli-pager
     exit 0
+fi
+
+# Delete failing stacks
+STATUS=$(aws cloudformation describe-stacks --stack-name "${STACK_NAME}" | jq -r '.Stacks[0].StackStatus')
+
+if [ "$STATUS" = "DELETE_FAILED" ]; then
+    aws cloudformation delete-stack --stack-name "${STACK_NAME}"
+    aws cloudformation wait stack-delete-complete --stack-name "${STACK_NAME}" --no-cli-pager
 fi
 
 # Run CDK synth
@@ -14,7 +26,6 @@ cdk synth --path-metadata false --lookups false > cfn.yaml
 cat cfn.yaml
 
 # Run CloudFormation
-./scripts/stacklog.sh ${STACK_NAME} &
 aws cloudformation deploy --template-file cfn.yaml --stack-name "${STACK_NAME}" --capabilities CAPABILITY_IAM --capabilities CAPABILITY_NAMED_IAM --no-fail-on-empty-changeset --no-cli-pager
 aws cloudformation describe-stacks --stack-name "${STACK_NAME}" --query 'Stacks[0].Outputs' > outputs.json
 
