@@ -1,4 +1,4 @@
 {
-    "app": "./rds",
+    "app": "./s3",
     "versionReporting": false
 }
